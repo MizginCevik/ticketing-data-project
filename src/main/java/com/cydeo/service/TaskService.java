@@ -11,5 +11,7 @@ public interface TaskService {
     void delete(Long id); // we don't have any unique field that's why used id
     List<TaskDTO> listAllTasks();
     TaskDTO findById(Long id);
+    int totalNonCompletedTask(String projectCode);
+    int totalCompletedTask(String projectCode);
 
 }
