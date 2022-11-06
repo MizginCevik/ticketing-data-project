@@ -27,7 +27,7 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "project_id")
     private Project project;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "employee_id")
     private User assignedEmployee;
 
 }
