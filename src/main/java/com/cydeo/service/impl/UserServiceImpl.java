@@ -1,10 +1,15 @@
 package com.cydeo.service.impl;
 
+import com.cydeo.dto.ProjectDTO;
+import com.cydeo.dto.TaskDTO;
 import com.cydeo.dto.UserDTO;
 import com.cydeo.entity.User;
 import com.cydeo.mapper.UserMapper;
 import com.cydeo.repository.UserRepository;
+import com.cydeo.service.ProjectService;
+import com.cydeo.service.TaskService;
 import com.cydeo.service.UserService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -16,10 +21,14 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final ProjectService projectService;
+    private final TaskService taskService;
 
-    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper) {
+    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, @Lazy ProjectService projectService, @Lazy TaskService taskService) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.projectService = projectService;
+        this.taskService = taskService;
     }
 
     @Override
@@ -56,8 +65,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public void delete(String username) { //delete it from UserInterface, keep it in the table
         User user = userRepository.findByUserName(username); // go to db and get that user with username
-        user.setIsDeleted(true); // change the isDeleted field to true
-        userRepository.save(user); // save the object in the db
+
+        if (checkIfUserCanBeDeleted(user)) {
+            user.setIsDeleted(true); // change the isDeleted field to true
+            userRepository.save(user); // save the object in the db
+        }
+
     }
     // Syntax of findAll in listAllUsers implementation is SELECT * FROM table. It's unchangeable.
     // Go to repo and write your own query to give condition that is which user to be showed or not in the UI
@@ -70,6 +83,19 @@ public class UserServiceImpl implements UserService {
     public List<UserDTO> listAllByRole(String role) {
         List<User> users = userRepository.findByRoleDescriptionIgnoreCase(role); // go to db and bring all the users with specific
         return users.stream().map(userMapper::convertToDto).collect(Collectors.toList());
+    }
+
+    private boolean checkIfUserCanBeDeleted(User user) { // pass either User or UserDTO
+        switch (user.getRole().getDescription()) {
+            case "Manager":
+                List<ProjectDTO> projectDTOList = projectService.listAllNonCompletedByAssignedManager(userMapper.convertToDto(user));
+                return projectDTOList.size() == 0;
+            case "Employee":
+                List<TaskDTO> taskDTOList = taskService.listAllNonCompletedByAssignedEmployee(userMapper.convertToDto(user));
+                return taskDTOList.size() == 0;
+            default:
+                return true;
+        }
     }
 
 }

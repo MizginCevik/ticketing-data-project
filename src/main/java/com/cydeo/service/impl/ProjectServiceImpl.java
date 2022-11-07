@@ -48,10 +48,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public void save(ProjectDTO dto) {
-        if (dto.getProjectStatus() == null){
-            dto.setProjectStatus(Status.OPEN);
-        }
-        projectRepository.save(projectMapper.convertToEntity(dto));
+        dto.setProjectStatus(Status.OPEN);
+        Project project = projectMapper.convertToEntity(dto);
+        projectRepository.save(project);
     }
 
     @Override
@@ -71,7 +70,12 @@ public class ProjectServiceImpl implements ProjectService {
     public void delete(String code) {
         Project project = projectRepository.findByProjectCode(code);
         project.setIsDeleted(true);
+
+        project.setProjectCode(project.getProjectCode() + "-" + project.getId()); // after deleting, projectCode is changing
+
         projectRepository.save(project);
+
+        taskService.deleteByProject(projectMapper.convertToDto(project)); // delete all the related task with the project
     }
 
     @Override
@@ -79,6 +83,9 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = projectRepository.findByProjectCode(projectCode);
         project.setProjectStatus(Status.COMPLETE);
         projectRepository.save(project);
+
+        taskService.completeByProject(projectMapper.convertToDto(project)); // delete all the related task with the project
+
     }
 
     @Override
@@ -98,6 +105,13 @@ public class ProjectServiceImpl implements ProjectService {
 
                     return obj;
                 }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProjectDTO> listAllNonCompletedByAssignedManager(UserDTO assignedManager) {
+        List<Project> projects = projectRepository
+                .findAllByProjectStatusIsNotAndAssignedManager(Status.COMPLETE,userMapper.convertToEntity(assignedManager));
+        return projects.stream().map(projectMapper::convertToDto).collect(Collectors.toList());
     }
 
 }
