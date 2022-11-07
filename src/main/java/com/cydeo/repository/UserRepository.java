@@ -9,7 +9,7 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User,Long> {
 
     User findByUserName(String username);
-    @Transactional
+    @Transactional // when you write a query if there is insert, delete, update transactions, spring requests this annotation to be used
     void deleteByUserName(String username);
     List<User> findByRoleDescriptionIgnoreCase(String description);
 
