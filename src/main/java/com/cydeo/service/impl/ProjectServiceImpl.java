@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
+@Service // this bean is going to be used for the interface
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
@@ -75,7 +75,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         projectRepository.save(project);
 
-        taskService.deleteByProject(projectMapper.convertToDto(project)); // delete all the related task with the project
+        taskService.deleteByProject(projectMapper.convertToDto(project)); // deleting all the tasks with the related project
     }
 
     @Override
@@ -84,7 +84,7 @@ public class ProjectServiceImpl implements ProjectService {
         project.setProjectStatus(Status.COMPLETE);
         projectRepository.save(project);
 
-        taskService.completeByProject(projectMapper.convertToDto(project)); // delete all the related task with the project
+        taskService.completeByProject(projectMapper.convertToDto(project)); // complete all the tasks
 
     }
 
@@ -110,8 +110,8 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public List<ProjectDTO> listAllNonCompletedByAssignedManager(UserDTO assignedManager) {
         List<Project> projects = projectRepository
-                .findAllByProjectStatusIsNotAndAssignedManager(Status.COMPLETE,userMapper.convertToEntity(assignedManager));
-        return projects.stream().map(projectMapper::convertToDto).collect(Collectors.toList());
+                .findAllByProjectStatusIsNotAndAssignedManager(Status.COMPLETE, userMapper.convertToEntity(assignedManager));
+        return projects.stream().map(projectMapper::convertToDto).collect(Collectors.toList()); // return project entities to dto
     }
 
 }

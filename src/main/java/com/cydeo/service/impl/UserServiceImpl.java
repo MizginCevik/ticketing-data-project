@@ -24,6 +24,8 @@ public class UserServiceImpl implements UserService {
     private final ProjectService projectService;
     private final TaskService taskService;
 
+    // Got Circular Dependency problem : the dependencies of some beans in the application context form a cycle: -> userServiceImpl -> projectServiceImpl ->
+    // because of dependency injection, projectServiceImpl needs UserServiceImpl bean, but it's not ready yet : use @Lazy
     public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, @Lazy ProjectService projectService, @Lazy TaskService taskService) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
@@ -66,9 +68,9 @@ public class UserServiceImpl implements UserService {
     public void delete(String username) { //delete it from UserInterface, keep it in the table
         User user = userRepository.findByUserNameAndIsDeleted(username,false); // go to db and get that user with username
 
-        if (checkIfUserCanBeDeleted(user)) {
+        if (checkIfUserCanBeDeleted(user)) { // if user is deletable (true)
             user.setIsDeleted(true); // change the isDeleted field to true
-            user.setUserName(user.getUserName() + "-" + user.getId());
+            user.setUserName(user.getUserName() + "-" + user.getId()); // change the username so I can use the username again
             userRepository.save(user); // save the object in the db
         }
 
@@ -86,15 +88,16 @@ public class UserServiceImpl implements UserService {
         return users.stream().map(userMapper::convertToDto).collect(Collectors.toList());
     }
 
-    private boolean checkIfUserCanBeDeleted(User user) { // pass either User or UserDTO
+    private boolean checkIfUserCanBeDeleted(User user) { // pass either User or UserDTO since it's private method
+        // first I need to know user is employee or manager
         switch (user.getRole().getDescription()) {
-            case "Manager":
+            case "Manager": // if manager has non-completed projects
                 List<ProjectDTO> projectDTOList = projectService.listAllNonCompletedByAssignedManager(userMapper.convertToDto(user));
-                return projectDTOList.size() == 0;
-            case "Employee":
+                return projectDTOList.size() == 0; // if it's zero return true
+            case "Employee": // if employee has non-completed tasks
                 List<TaskDTO> taskDTOList = taskService.listAllNonCompletedByAssignedEmployee(userMapper.convertToDto(user));
                 return taskDTOList.size() == 0;
-            default:
+            default: // it's deletable user
                 return true;
         }
     }

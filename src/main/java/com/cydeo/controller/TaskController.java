@@ -96,7 +96,7 @@ public class TaskController {
 
     @GetMapping("/employee/pending-tasks")
     public String employeePendingTasks(Model model) {
-        model.addAttribute("tasks", taskService.listAllTasksByStatusIsNot(Status.COMPLETE));
+        model.addAttribute("tasks", taskService.listAllTasksByStatusIsNot(Status.COMPLETE)); // display only the tasks belongs to that employee
         return "/task/pending-tasks";
     }
 
@@ -128,13 +128,14 @@ public class TaskController {
             return "/task/status-update";
 
         }
-
-        taskService.update(task);
+        //before we had updateStatus(task) because only employees have option to update the task status
+        //in the Task Create page managers only update the task information without changing the status of task
+        //in Pending Task page employees update only the status of task, that's we separated logic before
+        // dto.getTaskStatus() == null ? task.get().getTaskStatus() : dto.getTaskStatus() -> since I have this condition I don't need to separate it anymore
+        taskService.update(task); // because I'm getting the new status in the condition
 
         return "redirect:/task/employee/pending-tasks";
 
     }
-
-
 
 }

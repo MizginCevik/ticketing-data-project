@@ -94,14 +94,15 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteByProject(ProjectDTO projectDTO) {
         Project project = projectMapper.convertToEntity(projectDTO);
-        List<Task> tasks = taskRepository.findAllByProject(project);
-        tasks.forEach(task -> delete(task.getId())); // delete all tasks one by one
+        List<Task> tasks = taskRepository.findAllByProject(project); // which tasks need to be deleted
+        tasks.forEach(task -> delete(task.getId())); // delete all tasks one by one, can not delete all of them at the same time
     }
 
     @Override
     public void completeByProject(ProjectDTO projectDTO) {
         Project project = projectMapper.convertToEntity(projectDTO);
-        List<Task> tasks = taskRepository.findAllByProject(project);
+        List<Task> tasks = taskRepository.findAllByProject(project); // @Where(clause = "is_deleted=false") on top of the User entity class is making problem here
+        //convert task entities to dto, then I need to set the status before updating
         tasks.stream().map(taskMapper::convertToDto).forEach(taskDTO -> {
             taskDTO.setTaskStatus(Status.COMPLETE);
             update(taskDTO);
@@ -109,15 +110,15 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<TaskDTO> listAllTasksByStatusIsNot(Status status) {
-        UserDTO loggedInUser = userService.findByUserName("john@employee.com");
+    public List<TaskDTO> listAllTasksByStatusIsNot(Status status) { // to show uncompleted task for pending page
+        UserDTO loggedInUser = userService.findByUserName("john@employee.com"); // I'm going with hard coded since we don't have security and login system
         List<Task> tasks = taskRepository.
-                findAllByTaskStatusIsNotAndAssignedEmployee(status, userMapper.convertToEntity(loggedInUser));
-        return tasks.stream().map(taskMapper::convertToDto).collect(Collectors.toList());
+                findAllByTaskStatusIsNotAndAssignedEmployee(status, userMapper.convertToEntity(loggedInUser)); // I should pass user entity to parameter because of using taskRepository
+        return tasks.stream().map(taskMapper::convertToDto).collect(Collectors.toList()); // return tasks as dto
     }
 
     @Override
-    public List<TaskDTO> listAllTasksByStatus(Status status) {
+    public List<TaskDTO> listAllTasksByStatus(Status status) { // to show completed tasks for archive page
         UserDTO loggedInUser = userService.findByUserName("john@employee.com");
         List<Task> tasks = taskRepository.
                 findAllByTaskStatusAndAssignedEmployee(status, userMapper.convertToEntity(loggedInUser));
@@ -127,8 +128,20 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public List<TaskDTO> listAllNonCompletedByAssignedEmployee(UserDTO assignedEmployee) {
         List<Task> tasks = taskRepository.
-                findAllByTaskStatusIsNotAndAssignedEmployee(Status.COMPLETE,userMapper.convertToEntity(assignedEmployee));
+                findAllByTaskStatusIsNotAndAssignedEmployee(Status.COMPLETE, userMapper.convertToEntity(assignedEmployee));
         return tasks.stream().map(taskMapper::convertToDto).collect(Collectors.toList());
     }
 
 }
+
+/*
+Project has tasks, each task has assigned Employee
+When I delete one employee from user list and since I'm doing soft delete
+findByProject should be able to bring the task belongs to employee no mather it's deleted or not
+But where clause is making problem here because it's excluding is_deleted=true users
+That's why it returns null (nothing) because that query works with is_deleted=false condition
+to solve that go to user repo and add condition in derived queries
+    - findAllByIsDeletedOrderByFirstNameDesc
+    - findByUserNameAndIsDeleted
+    - findByRoleDescriptionIgnoreCaseAndIsDeleted
+*/
